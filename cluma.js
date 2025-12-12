@@ -300,7 +300,6 @@ runWhenReady(() => {
   [muteBtn, playSound].forEach((btn) => {
     btn?.addEventListener("click", startHeroIntro);
   });
-});
 
     /* ---------------------- GLOBAL SOUND CONTROL SYSTEM ---------------------- */
     const soundMute = document.querySelector("#mute-site");
