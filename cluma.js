@@ -72,16 +72,9 @@
   /* ==========================
    DOM-DEPENDENT CODE START
    ========================== */
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 Cluma JS Loaded");
 
-const runWhenReady = (fn) => {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", fn, { once: true });
-  } else {
-    fn();
-  }
-};
-
-runWhenReady(() => {
   /* ------------------------------------------------------------
      HERO INTRO + SCROLL ANIMATIONS (GSAP)
      ------------------------------------------------------------ */
@@ -90,18 +83,25 @@ runWhenReady(() => {
 
   if (hasGSAP && hasScrollTrigger) {
     gsap.registerPlugin(ScrollTrigger);
+  } else {
+    console.error("❌ GSAP or ScrollTrigger not found!");
+    return;
   }
 
+  // --- SELECTORS (With safety logs) ---
   const soundPreloader = document.querySelector(".sound-preloader");
   const muteBtn = document.querySelector("#mute-site");
   const playSound = document.querySelector("#play-sound");
   const preloader = document.querySelector(".preloader");
+  const heroSection = document.querySelector("#hero-section");
   const heroGradient = document.querySelector("#hero-gradient-outline");
   const heroContent = document.querySelector("#hero-content");
   const preloaderVid = document.querySelector("[data-preloader-vid]");
   const heroVid = document.querySelector("[data-hero-vid]");
 
+  // --- SCROLL CONTROL ---
   function lockScroll() {
+    console.log("🔒 Scroll Locked");
     document.body.style.height = "100vh";
     document.body.style.overflow = "hidden";
     document.documentElement.style.height = "100vh";
@@ -110,92 +110,67 @@ runWhenReady(() => {
   }
 
   function unlockScroll() {
-    document.body.style.height = "";
-    document.body.style.overflow = "";
-    document.documentElement.style.height = "";
-    document.documentElement.style.overflow = "";
+    console.log("🔓 Scroll Unlocked");
+    // Explicitly set to visible/auto to override any inherited styles
+    document.body.style.height = "auto";
+    document.body.style.overflow = "visible";
+    document.documentElement.style.height = "auto";
+    document.documentElement.style.overflow = "visible";
+    
+    // ⚡️ IMPORTANT: Tell ScrollTrigger the page size changed
+    ScrollTrigger.refresh();
   }
 
-  // ✅ Safety net: if something goes wrong, never trap the user forever
-  const failSafeUnlock = () => {
-    unlockScroll();
-    try {
-      if (hasGSAP && hasScrollTrigger) ScrollTrigger.refresh();
-    } catch (e) {}
-  };
-
-  // If the user leaves the hero without the timeline finishing, still allow scroll
-  window.addEventListener("pageshow", failSafeUnlock, { once: true });
-
-  // Only lock scroll if the key elements exist
-  const canRunIntro = !!(soundPreloader && muteBtn && playSound && preloader && heroContent);
-
   function forceStartAtHero() {
-    window.history.scrollRestoration = "manual";
+    if (window.history.scrollRestoration) {
+        window.history.scrollRestoration = "manual";
+    }
     window.scrollTo(0, 0);
     lockScroll();
   }
+  forceStartAtHero();
 
-  if (canRunIntro) {
-    forceStartAtHero();
-  } else {
-    // If we can't run the intro properly, don't ever lock scrolling.
-    unlockScroll();
-  }
-
+  // --- INITIAL STATES ---
   function setInitialStates() {
-    if (!(hasGSAP && hasScrollTrigger)) return;
-    if (!soundPreloader || !preloader || !heroGradient || !heroContent) return;
-
-    gsap.set(soundPreloader, {
-      opacity: 1,
-      scale: 1,
-      display: "flex",
-      visibility: "visible",
-    });
-
-    gsap.set(preloader, {
-      opacity: 0,
-      scale: 0.85,
-      display: "none",
-      visibility: "hidden",
-    });
-
-    gsap.set(heroGradient, {
-      scale: 1.3,
-      transformOrigin: "center center",
-    });
-
-    gsap.set(heroContent, {
-      opacity: 0,
-      visibility: "hidden",
-      scale: 0.95,
-    });
-
-    const animEls = heroContent.querySelectorAll("[data-hero-anim]");
-    animEls.forEach((el) => {
-      const type = el.getAttribute("data-hero-anim");
-      if (type === "left") gsap.set(el, { x: "-60%", opacity: 0, visibility: "hidden" });
-      else if (type === "right") gsap.set(el, { x: "60%", opacity: 0, visibility: "hidden" });
-      else if (type === "fade") gsap.set(el, { opacity: 0, scale: 0.95, visibility: "hidden" });
-    });
+    if(soundPreloader) {
+      gsap.set(soundPreloader, { opacity: 1, scale: 1, display: "flex", visibility: "visible" });
+    }
+    if(preloader) {
+      gsap.set(preloader, { opacity: 0, scale: 0.85, display: "none", visibility: "hidden" });
+    }
+    if(heroGradient) {
+      gsap.set(heroGradient, { scale: 1.3, transformOrigin: "center center" });
+    }
+    if(heroContent) {
+      gsap.set(heroContent, { opacity: 0, visibility: "hidden", scale: 0.95 });
+      
+      const animEls = heroContent.querySelectorAll("[data-hero-anim]");
+      animEls.forEach((el) => {
+        const type = el.getAttribute("data-hero-anim");
+        if (type === "left") gsap.set(el, { x: "-60%", opacity: 0, visibility: "hidden" });
+        else if (type === "right") gsap.set(el, { x: "60%", opacity: 0, visibility: "hidden" });
+        else if (type === "fade") gsap.set(el, { opacity: 0, scale: 0.95, visibility: "hidden" });
+      });
+    }
   }
   setInitialStates();
 
   function playVideo(video) {
     if (!video) return;
     video.currentTime = 0;
-    video.play().catch(() => {});
+    video.play().catch((e) => console.warn("Video autoplay blocked", e));
   }
 
+  // --- SCROLL ANIMATION ---
   function initHeroScrollAnimation() {
-    if (!(hasGSAP && hasScrollTrigger)) return;
-
     const stickyTrigger = document.querySelector(".hero-sticky-wrp");
     const heroGradientEl = document.querySelector("#hero-gradient-outline");
     const heroWrapper = document.querySelector(".sticky-100vh-content-wrp-hero");
 
-    if (!stickyTrigger || !heroGradientEl || !heroWrapper) return;
+    if (!stickyTrigger || !heroGradientEl || !heroWrapper) {
+        console.warn("⚠️ Scroll Animation elements missing. Skipping.");
+        return;
+    }
 
     const wrapperEndWidth = "92.75vw";
     const wrapperOffset = 0.06;
@@ -204,102 +179,108 @@ runWhenReady(() => {
     gsap.set(heroWrapper, { width: "100vw", boxSizing: "border-box" });
     gsap.set(heroGradientEl, { scale: 1.3, transformOrigin: "center center" });
 
-    gsap.timeline({
+    const scrollTl = gsap.timeline({
       scrollTrigger: {
         trigger: stickyTrigger,
         start: "top top",
         end: "bottom bottom",
         scrub: 1.5,
+        ease: commonEase,
       },
-    })
-      .to(heroGradientEl, { scale: 1, ease: commonEase }, 0)
-      .to(heroWrapper, { width: wrapperEndWidth, ease: commonEase }, wrapperOffset);
+    });
+
+    scrollTl.to(heroGradientEl, { scale: 1, ease: commonEase }, 0);
+    scrollTl.to(heroWrapper, { width: wrapperEndWidth, ease: commonEase }, wrapperOffset);
   }
 
+  // --- INTRO SEQUENCE ---
   function startHeroIntro() {
-    // If GSAP isn't available for some reason, don't trap scroll.
-    if (!hasGSAP) {
-      failSafeUnlock();
-      return;
+    console.log("🎬 Intro Started");
+    
+    // Disable buttons
+    if(muteBtn) muteBtn.setAttribute("disabled", true);
+    if(playSound) playSound.setAttribute("disabled", true);
+
+    const tl = gsap.timeline({ 
+        defaults: { ease: "power3.inOut" },
+        onComplete: () => console.log("✅ Timeline Complete")
+    });
+
+    // 1. Sound Preloader
+    if (soundPreloader) {
+        tl.to(soundPreloader, {
+            scale: 1.15,
+            opacity: 0,
+            duration: 1.2,
+            onComplete: () => { soundPreloader.style.display = "none"; },
+        });
     }
 
-    [muteBtn, playSound].forEach((btn) => btn?.setAttribute("disabled", true));
+    // 2. Preloader
+    if (preloader) {
+        tl.set(preloader, { display: "flex", visibility: "visible" });
+        tl.to(preloader, { opacity: 1, scale: 1, duration: 1.6, ease: "power2.out" });
+        
+        // 3. Video
+        if(preloaderVid) tl.add(() => playVideo(preloaderVid));
+        tl.to({}, { duration: 12 }); // Wait 12s
 
-    const tl = gsap.timeline({ defaults: { ease: "power3.inOut" } });
-
-    // ✅ Ultimate safety net: if timeline completes OR is interrupted, unlock scroll.
-    tl.eventCallback("onComplete", failSafeUnlock);
-    tl.eventCallback("onInterrupt", failSafeUnlock);
-
-    tl.to(soundPreloader, {
-      scale: 1.15,
-      opacity: 0,
-      duration: 1.2,
-      onComplete: () => {
-        soundPreloader.style.display = "none";
-      },
-    });
-
-    tl.set(preloader, { display: "flex", visibility: "visible" });
-    tl.to(preloader, { opacity: 1, scale: 1, duration: 1.6, ease: "power2.out" });
-
-    tl.add(() => playVideo(preloaderVid));
-    tl.to({}, { duration: 12 });
-
-    tl.to(preloader, {
-      opacity: 0,
-      scale: 0.9,
-      duration: 1.4,
-      onComplete: () => {
-        preloader.style.display = "none";
-      },
-    });
-
-    tl.set(heroContent, { visibility: "visible" }, "-=0.5");
-    tl.to(heroContent, {
-      opacity: 1,
-      scale: 1,
-      duration: 1.6,
-      ease: "power2.out",
-      onStart: () => playVideo(heroVid),
-    });
-
-    tl.add(() => {
-      const animEls = heroContent.querySelectorAll("[data-hero-anim]");
-      animEls.forEach((el, i) => {
-        const type = el.getAttribute("data-hero-anim");
-        let fromProps = {};
-        if (type === "left") fromProps = { x: "-60%", opacity: 0 };
-        else if (type === "right") fromProps = { x: "60%", opacity: 0 };
-        else if (type === "fade") fromProps = { opacity: 0, scale: 0.95 };
-
-        gsap.to(el, {
-          x: "0%",
-          opacity: 1,
-          scale: 1,
-          visibility: "visible",
-          duration: 1.4,
-          delay: i * 0.15,
-          ease: "power3.out",
-          ...fromProps,
+        // 4. Preloader Exit
+        tl.to(preloader, {
+            opacity: 0,
+            scale: 0.9,
+            duration: 1.4,
+            onComplete: () => { preloader.style.display = "none"; },
         });
-      });
-    }, "-=0.4");
+    }
 
-    // This is still your “real” unlock moment:
+    // 5. Hero Content
+    if (heroContent) {
+        tl.set(heroContent, { visibility: "visible" }, "-=0.5");
+        tl.to(heroContent, {
+            opacity: 1,
+            scale: 1,
+            duration: 1.6,
+            ease: "power2.out",
+            onStart: () => { if(heroVid) playVideo(heroVid); },
+        });
+
+        // 6. Staggered Children
+        tl.add(() => {
+            const animEls = heroContent.querySelectorAll("[data-hero-anim]");
+            animEls.forEach((el, i) => {
+                const type = el.getAttribute("data-hero-anim");
+                let fromProps = {};
+                if (type === "left") fromProps = { x: "-60%", opacity: 0 };
+                else if (type === "right") fromProps = { x: "60%", opacity: 0 };
+                else if (type === "fade") fromProps = { opacity: 0, scale: 0.95 };
+
+                gsap.to(el, {
+                    x: "0%",
+                    opacity: 1,
+                    scale: 1,
+                    visibility: "visible",
+                    duration: 1.4,
+                    delay: i * 0.15,
+                    ease: "power3.out",
+                    ...fromProps,
+                });
+            });
+        }, "-=0.4");
+    }
+
+    // 7. UNLOCK SCROLL (Safe Call)
     tl.call(() => {
-      unlockScroll();
-      initHeroScrollAnimation();
+        unlockScroll();
+        initHeroScrollAnimation();
     }, null, "+=0.5");
-
-    // ✅ Extra safety net: even if something blocks the timeline, unlock after ~20s.
-    setTimeout(failSafeUnlock, 20000);
   }
 
-  // Hook buttons
-  [muteBtn, playSound].forEach((btn) => {
-    btn?.addEventListener("click", startHeroIntro);
-  });
+  // --- LISTENERS ---
+  if(muteBtn) muteBtn.addEventListener("click", startHeroIntro);
+  if(playSound) playSound.addEventListener("click", startHeroIntro);
+
+});
 
     /* ---------------------- GLOBAL SOUND CONTROL SYSTEM ---------------------- */
     const soundMute = document.querySelector("#mute-site");
