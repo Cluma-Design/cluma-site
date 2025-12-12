@@ -911,6 +911,6 @@ runWhenReady(() => {
       );
 
       lazyVids.forEach((v) => io.observe(v));
-    })();
+    });
   });
 })();
